@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Play, FileText, Search, Download, Eye, HelpCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Play, FileText, Search, Download, Eye, HelpCircle, Settings } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +28,16 @@ const Lectures = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [contentUploads, setContentUploads] = useState<ContentUpload[]>([]);
   const [loading, setLoading] = useState(true);
+  const [videoQuality, setVideoQuality] = useState<string>("720p");
   const { toast } = useToast();
+
+  const handleQualityChange = (quality: string) => {
+    setVideoQuality(quality);
+    toast({
+      title: "Video Quality Updated",
+      description: `Quality set to ${quality === "auto" ? "Auto (adaptive)" : quality}`,
+    });
+  };
 
   const lectures = [
     {
@@ -186,6 +196,9 @@ const Lectures = () => {
                       <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1 rounded">
                         {lecture.duration}
                       </div>
+                      <div className="absolute top-1 right-1 bg-primary/90 text-primary-foreground text-xs px-1 rounded">
+                        {videoQuality}
+                      </div>
                     </div>
 
                     {/* Content */}
@@ -210,11 +223,27 @@ const Lectures = () => {
                         {lecture.difficulty}
                       </Badge>
 
-                      <div className="mt-4">
-                        <Button variant="study" size="default" className="w-full sm:w-auto">
+                      <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                        <Button variant="study" size="default" className="flex-1 sm:flex-none">
                           <Play className="w-4 h-4 mr-2" />
                           Play Lecture
                         </Button>
+                        
+                        <Select value={videoQuality} onValueChange={handleQualityChange}>
+                          <SelectTrigger className="w-full sm:w-32 h-10">
+                            <div className="flex items-center gap-2">
+                              <Settings className="w-4 h-4" />
+                              <SelectValue placeholder="Quality" />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="360p">360p</SelectItem>
+                            <SelectItem value="480p">480p</SelectItem>
+                            <SelectItem value="720p">720p HD</SelectItem>
+                            <SelectItem value="1080p">1080p FHD</SelectItem>
+                            <SelectItem value="auto">Auto</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
