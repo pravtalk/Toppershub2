@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Play, FileText, Search, Download, Eye, HelpCircle } from "lucide-react";
+import { Play, FileText, Search, Download, Eye, HelpCircle, ArrowLeft } from "lucide-react";
 import Navigation from "@/components/Navigation";
+import VideoPlayer from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,6 +28,7 @@ const Lectures = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [contentUploads, setContentUploads] = useState<ContentUpload[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedLecture, setSelectedLecture] = useState<any>(null);
   const { toast } = useToast();
 
   const lectures = [
@@ -37,7 +39,13 @@ const Lectures = () => {
       thumbnail: "/placeholder.svg",
       duration: "45 min",
       views: "2.3k",
-      difficulty: "Beginner"
+      difficulty: "Beginner",
+      videoUrl: "https://sample-videos.com/zip/10/mp4/SampleVideo_720x480_1mb.mp4",
+      qualityOptions: {
+        "720p": "https://sample-videos.com/zip/10/mp4/SampleVideo_720x480_1mb.mp4",
+        "480p": "https://sample-videos.com/zip/10/mp4/SampleVideo_480x360_1mb.mp4", 
+        "360p": "https://sample-videos.com/zip/10/mp4/SampleVideo_360x240_1mb.mp4"
+      }
     },
     {
       id: 2,
@@ -46,7 +54,8 @@ const Lectures = () => {
       thumbnail: "/placeholder.svg",
       duration: "50 min",
       views: "1.8k",
-      difficulty: "Intermediate"
+      difficulty: "Intermediate",
+      videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     },
     {
       id: 3,
@@ -55,7 +64,13 @@ const Lectures = () => {
       thumbnail: "/placeholder.svg", 
       duration: "55 min",
       views: "1.5k",
-      difficulty: "Advanced"
+      difficulty: "Advanced",
+      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      qualityOptions: {
+        "720p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        "480p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+        "360p": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+      }
     }
   ];
 
@@ -129,6 +144,58 @@ const Lectures = () => {
      upload.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
      (upload.subjects as any)?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // If a lecture is selected, show the video player
+  if (selectedLecture) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        {/* Header */}
+        <div className="sticky top-0 bg-background/80 backdrop-blur-lg border-b border-border z-50">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedLecture(null)}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Lectures
+              </Button>
+              <h1 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent">
+                {selectedLecture.title}
+              </h1>
+            </div>
+          </div>
+        </div>
+
+        {/* Video Player */}
+        <div className="container mx-auto px-4 py-6">
+          <VideoPlayer
+            videoUrl={selectedLecture.videoUrl}
+            title={selectedLecture.title}
+            description={`${selectedLecture.subject} • ${selectedLecture.difficulty} • ${selectedLecture.duration}`}
+            qualityOptions={selectedLecture.qualityOptions}
+            hasNext={true}
+            hasPrevious={true}
+            onNext={() => {
+              const currentIndex = lectures.findIndex(l => l.id === selectedLecture.id);
+              const nextLecture = lectures[currentIndex + 1];
+              if (nextLecture) setSelectedLecture(nextLecture);
+            }}
+            onPrevious={() => {
+              const currentIndex = lectures.findIndex(l => l.id === selectedLecture.id);
+              const previousLecture = lectures[currentIndex - 1];
+              if (previousLecture) setSelectedLecture(previousLecture);
+            }}
+          />
+        </div>
+
+        {/* Bottom Navigation */}
+        <Navigation />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -211,7 +278,12 @@ const Lectures = () => {
                       </Badge>
 
                       <div className="mt-4">
-                        <Button variant="study" size="default" className="w-full sm:w-auto">
+                        <Button 
+                          variant="study" 
+                          size="default" 
+                          className="w-full sm:w-auto"
+                          onClick={() => setSelectedLecture(lecture)}
+                        >
                           <Play className="w-4 h-4 mr-2" />
                           Play Lecture
                         </Button>

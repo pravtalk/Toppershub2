@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipBack, SkipForward } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipBack, SkipForward, Settings } from 'lucide-react';
 import Hls from 'hls.js';
 
 interface VideoPlayerProps {
@@ -15,6 +16,11 @@ interface VideoPlayerProps {
   onPrevious?: () => void;
   hasNext?: boolean;
   hasPrevious?: boolean;
+  qualityOptions?: {
+    '720p'?: string;
+    '480p'?: string;
+    '360p'?: string;
+  };
 }
 
 const VideoPlayer = ({ 
@@ -26,11 +32,14 @@ const VideoPlayer = ({
   onNext,
   onPrevious,
   hasNext = false,
-  hasPrevious = false
+  hasPrevious = false,
+  qualityOptions
 }: VideoPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState<'720p' | '480p' | '360p'>('720p');
+  const [showQualitySelector, setShowQualitySelector] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -59,12 +68,21 @@ const VideoPlayer = ({
     return /\.m3u8(\?.*)?$/i.test(url);
   };
 
-  const videoId = getYouTubeVideoId(videoUrl);
-  const vimeoId = getVimeoVideoId(videoUrl);
-  const isDirect = isDirectVideo(videoUrl);
-  const isHLS = isHLSVideo(videoUrl);
+  // Get current video URL based on quality selection
+  const getCurrentVideoUrl = () => {
+    if (qualityOptions && qualityOptions[selectedQuality]) {
+      return qualityOptions[selectedQuality];
+    }
+    return videoUrl;
+  };
+
+  const currentVideoUrl = getCurrentVideoUrl();
+  const videoId = getYouTubeVideoId(currentVideoUrl);
+  const vimeoId = getVimeoVideoId(currentVideoUrl);
+  const isDirect = isDirectVideo(currentVideoUrl);
+  const isHLS = isHLSVideo(currentVideoUrl);
   
-  let embedUrl = videoUrl;
+  let embedUrl = currentVideoUrl;
   let videoType = 'custom';
   
   if (videoId) {
@@ -78,6 +96,18 @@ const VideoPlayer = ({
   } else if (isDirect) {
     videoType = 'direct';
   }
+
+  // Handle quality change
+  const handleQualityChange = (quality: '720p' | '480p' | '360p') => {
+    setSelectedQuality(quality);
+    setShowQualitySelector(false);
+    
+    // If HLS video, reload with new quality
+    if (videoType === 'hls' && hlsRef.current) {
+      hlsRef.current.destroy();
+      // The useEffect will reinitialize with the new URL
+    }
+  };
 
   // Fullscreen functionality
   const toggleFullscreen = async () => {
@@ -131,9 +161,23 @@ const VideoPlayer = ({
     };
   }, []);
 
+  // Close quality selector when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showQualitySelector && containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowQualitySelector(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showQualitySelector]);
+
   // Initialize HLS player
   useEffect(() => {
-    if (videoType === 'hls' && videoRef.current && videoUrl) {
+    if (videoType === 'hls' && videoRef.current && currentVideoUrl) {
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
@@ -141,7 +185,7 @@ const VideoPlayer = ({
           backBufferLength: 90
         });
         
-        hls.loadSource(videoUrl);
+        hls.loadSource(currentVideoUrl);
         hls.attachMedia(videoRef.current);
         
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -159,10 +203,10 @@ const VideoPlayer = ({
         };
       } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
         // Safari native HLS support
-        videoRef.current.src = videoUrl;
+        videoRef.current.src = currentVideoUrl;
       }
     }
-  }, [videoUrl, videoType]);
+  }, [currentVideoUrl, videoType, selectedQuality]);
 
   // Cleanup HLS on unmount
   useEffect(() => {
@@ -191,16 +235,50 @@ const VideoPlayer = ({
             ref={containerRef}
             className={`relative ${isFullscreen ? 'h-full' : 'aspect-video'} bg-black rounded-lg overflow-hidden group`}
           >
-            {/* Fullscreen Button Overlay */}
+            {/* Video Controls Overlay */}
             <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={toggleFullscreen}
-                className="bg-black/50 hover:bg-black/70 text-white border-none"
-              >
-                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Quality Selector */}
+                {qualityOptions && Object.keys(qualityOptions).length > 0 && (
+                  <div className="relative">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowQualitySelector(!showQualitySelector)}
+                      className="bg-black/50 hover:bg-black/70 text-white border-none"
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      {selectedQuality}
+                    </Button>
+                    
+                    {showQualitySelector && (
+                      <div className="absolute top-full right-0 mt-1 bg-black/90 rounded-md border border-white/20 min-w-[100px] z-30">
+                        {Object.keys(qualityOptions).map((quality) => (
+                          <button
+                            key={quality}
+                            onClick={() => handleQualityChange(quality as '720p' | '480p' | '360p')}
+                            className={`w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 first:rounded-t-md last:rounded-b-md ${
+                              selectedQuality === quality ? 'bg-white/20' : ''
+                            }`}
+                          >
+                            {quality}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Fullscreen Button */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={toggleFullscreen}
+                  className="bg-black/50 hover:bg-black/70 text-white border-none"
+                >
+                  {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
 
             {videoType === 'youtube' && videoId ? (
@@ -238,21 +316,23 @@ const VideoPlayer = ({
                 className="w-full h-full"
                 poster=""
                 preload="metadata"
+                key={currentVideoUrl} // Force re-render when URL changes
               >
-                <source src={videoUrl} />
+                <source src={currentVideoUrl} />
                 Your browser does not support the video tag.
               </video>
-            ) : videoUrl ? (
+            ) : currentVideoUrl ? (
               // Fallback: try as iframe for other embedded content
               <iframe
-                src={videoUrl}
+                src={currentVideoUrl}
                 title={title}
                 className="w-full h-full"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
+                key={currentVideoUrl}
                 onError={() => {
-                  console.error('Failed to load video:', videoUrl);
+                  console.error('Failed to load video:', currentVideoUrl);
                 }}
               />
             ) : (
@@ -272,7 +352,10 @@ const VideoPlayer = ({
             {videoType === 'vimeo' && <span>🎬 Vimeo Video</span>}
             {videoType === 'hls' && <span>📺 HLS Live Stream</span>}
             {videoType === 'direct' && <span>📹 Direct Video</span>}
-            {videoType === 'custom' && videoUrl && <span>🔗 External Video Link</span>}
+            {videoType === 'custom' && currentVideoUrl && <span>🔗 External Video Link</span>}
+            {qualityOptions && Object.keys(qualityOptions).length > 0 && (
+              <span className="ml-2">• Quality: {selectedQuality}</span>
+            )}
           </div>
 
           {/* Video Controls */}

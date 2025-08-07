@@ -126,8 +126,46 @@ const ContentManagement = () => {
       return;
     }
 
+    // Check file size (10MB limit)
+    if (formData.file.size > 10 * 1024 * 1024) {
+      toast({
+        title: 'Error',
+        description: 'File size must be less than 10MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       setUploading(true);
+
+      // Check if storage bucket exists, if not try to create it
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error('Error checking buckets:', bucketsError);
+      }
+
+      const bucketExists = buckets?.some(bucket => bucket.name === 'content-files');
+      
+      if (!bucketExists) {
+        // Try to create the bucket
+        const { error: createBucketError } = await supabase.storage.createBucket('content-files', {
+          public: false,
+          allowedMimeTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+          fileSizeLimit: 10485760 // 10MB
+        });
+
+        if (createBucketError) {
+          console.error('Error creating bucket:', createBucketError);
+          toast({
+            title: 'Storage Setup Error',
+            description: 'Please contact admin to set up file storage',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
 
       // Upload file to Supabase Storage
       const fileExt = formData.file.name.split('.').pop();
@@ -136,14 +174,24 @@ const ContentManagement = () => {
 
       const { error: uploadError } = await supabase.storage
         .from('content-files')
-        .upload(filePath, formData.file);
+        .upload(filePath, formData.file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
 
       // Get public URL
       const { data: urlData } = supabase.storage
         .from('content-files')
         .getPublicUrl(filePath);
+
+      if (!urlData?.publicUrl) {
+        throw new Error('Failed to get file URL');
+      }
 
       // Save file metadata to database
       const { error: dbError } = await supabase
@@ -162,7 +210,10 @@ const ContentManagement = () => {
           }
         ]);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw new Error(`Database error: ${dbError.message}`);
+      }
 
       toast({
         title: 'Success',
@@ -181,11 +232,11 @@ const ContentManagement = () => {
       setIsDialogOpen(false);
       fetchData();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading file:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to upload file',
+        title: 'Upload Failed',
+        description: error.message || 'Failed to upload file. Please try again.',
         variant: 'destructive',
       });
     } finally {
