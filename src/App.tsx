@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import LiveClasses from "./pages/LiveClasses";
 import Subjects from "./pages/Subjects";
 import Lectures from "./pages/Lectures";
+import PracticeZone from "./pages/PracticeZone";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/live-classes" element={<LiveClasses />} />
             <Route path="/subjects" element={<Subjects />} />
             <Route path="/lectures/:subject?" element={<Lectures />} />
+            <Route path="/practice" element={<PracticeZone />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
