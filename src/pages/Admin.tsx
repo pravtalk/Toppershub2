@@ -6,10 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Users, Settings, GraduationCap, FileText } from 'lucide-react';
+import { Users, Settings, GraduationCap, FileText, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EnhancedBatchManagement from '@/components/EnhancedBatchManagement';
 import ContentManagement from '@/components/ContentManagement';
+import LiveLectureManagement from '@/components/LiveLectureManagement';
 
 interface User {
   id: string;
@@ -186,9 +187,10 @@ const Admin = () => {
 
         {/* Admin Tabs */}
         <Tabs defaultValue="batches" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="batches" className="text-xs sm:text-sm">Batches</TabsTrigger>
             <TabsTrigger value="content" className="text-xs sm:text-sm">Content</TabsTrigger>
+            <TabsTrigger value="live" className="text-xs sm:text-sm">Live</TabsTrigger>
             <TabsTrigger value="users" className="text-xs sm:text-sm">Users</TabsTrigger>
           </TabsList>
 
@@ -198,6 +200,10 @@ const Admin = () => {
 
           <TabsContent value="content" className="space-y-4">
             <ContentManagement />
+          </TabsContent>
+
+          <TabsContent value="live" className="space-y-4">
+            <LiveLectureManagement />
           </TabsContent>
 
           <TabsContent value="users" className="space-y-4">

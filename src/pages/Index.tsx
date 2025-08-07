@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Heart, User, LogOut, Shield } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search, Heart, User, LogOut, Shield, Play, Clock, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
 import BatchCard from "@/components/BatchCard";
 import heroBanner from "@/assets/hero-banner.jpg";
+import { useToast } from "@/hooks/use-toast";
 
 interface Batch {
   id: string;
@@ -20,16 +22,48 @@ interface Batch {
   is_active: boolean;
 }
 
+interface LiveLecture {
+  id: string;
+  title: string;
+  description: string;
+  live_url: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  is_live: boolean;
+  subjects?: { name: string };
+  batches?: { name: string };
+}
+
+interface ContentUpload {
+  id: string;
+  title: string;
+  description: string;
+  content_type: 'notes' | 'questions';
+  file_name: string;
+  file_url: string;
+  file_size: number;
+  pages_count: number;
+  download_count: number;
+  created_at: string;
+  subjects?: { name: string };
+  batches?: { name: string };
+}
+
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All Batches");
   const [dbBatches, setDbBatches] = useState<Batch[]>([]);
+  const [liveLectures, setLiveLectures] = useState<LiveLecture[]>([]);
+  const [recentContent, setRecentContent] = useState<ContentUpload[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, userRole, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchBatches();
+    fetchLiveLectures();
+    fetchRecentContent();
   }, []);
 
   const fetchBatches = async () => {
@@ -46,6 +80,54 @@ const Index = () => {
       console.error('Error fetching batches:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLiveLectures = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('live_lectures')
+        .select(`
+          *,
+          subjects(name),
+          batches(name)
+        `)
+        .eq('is_active', true)
+        .order('is_live', { ascending: false })
+        .order('scheduled_at', { ascending: false })
+        .limit(3);
+
+      if (error && !error.message.includes('relation "live_lectures" does not exist')) {
+        throw error;
+      }
+
+      setLiveLectures(data || []);
+    } catch (error) {
+      console.error('Error fetching live lectures:', error);
+    }
+  };
+
+  const fetchRecentContent = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('content_uploads')
+        .select(`
+          *,
+          subjects(name),
+          batches(name)
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(4);
+
+      if (error) {
+        console.warn('Error fetching content uploads:', error);
+        return;
+      }
+
+      setRecentContent(data || []);
+    } catch (error) {
+      console.error('Error fetching recent content:', error);
     }
   };
 
@@ -188,6 +270,68 @@ const Index = () => {
           ))}
         </div>
 
+        {/* Live Lectures Section */}
+        {liveLectures.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+              <h2 className="text-lg font-semibold text-primary">Live & Upcoming Lectures</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {liveLectures.map((lecture) => (
+                <Card key={lecture.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-base line-clamp-2">{lecture.title}</CardTitle>
+                      {lecture.is_live && (
+                        <Badge variant="destructive" className="animate-pulse text-xs">
+                          🔴 LIVE
+                        </Badge>
+                      )}
+                    </div>
+                    {lecture.description && (
+                      <CardDescription className="text-sm line-clamp-2">
+                        {lecture.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {lecture.subjects?.name || 'General'}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {lecture.duration_minutes}m
+                      </span>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="w-full"
+                      variant={lecture.is_live ? "default" : "outline"}
+                      onClick={() => {
+                        if (user) {
+                          window.open(lecture.live_url, '_blank');
+                          toast({
+                            title: lecture.is_live ? "Joining Live Lecture" : "Opening Lecture",
+                            description: `Opening ${lecture.title}`,
+                          });
+                        } else {
+                          navigate('/auth');
+                        }
+                      }}
+                    >
+                      <Play className="w-3 h-3 mr-1" />
+                      {lecture.is_live ? 'Join Live' : 'Watch'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Loved Batches Section */}
         <div className="mb-4 sm:mb-6">
           <div className="flex items-center gap-2 mb-3 sm:mb-4">
@@ -229,6 +373,62 @@ const Index = () => {
             </div>
           )}
         </div>
+
+        {/* Recent Practice Content Section */}
+        {recentContent.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-primary">Latest Study Materials</h2>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate('/practice')}
+              >
+                View All
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recentContent.map((content) => (
+                <Card key={content.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-base line-clamp-2">{content.title}</CardTitle>
+                      <Badge variant={content.content_type === 'notes' ? 'secondary' : 'outline'} className="text-xs">
+                        {content.content_type === 'notes' ? '📚 Notes' : '❓ Questions'}
+                      </Badge>
+                    </div>
+                    {content.description && (
+                      <CardDescription className="text-sm line-clamp-2">
+                        {content.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                      <span>{content.subjects?.name || 'General'}</span>
+                      <span>{content.pages_count} pages</span>
+                      <span>{(content.file_size / 1024 / 1024).toFixed(1)} MB</span>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        if (user) {
+                          navigate('/practice');
+                        } else {
+                          navigate('/auth');
+                        }
+                      }}
+                    >
+                      {content.content_type === 'notes' ? '📖 Read Notes' : '📝 View Questions'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Practice Zone Button */}
         <div className="fixed bottom-20 sm:bottom-24 right-3 sm:right-4 z-30">
