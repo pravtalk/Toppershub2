@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* PraveshCoderz Design System - Dark theme with vibrant neon gradients */
+
+@layer base {
+  :root {
+    /* Dark theme base colors */
+    --background: 222 25% 8%;
+    --foreground: 210 100% 98%;
+
+    --card: 222 25% 12%;
+    --card-foreground: 210 100% 98%;
+
+    --popover: 222 25% 12%;
+    --popover-foreground: 210 100% 98%;
+
+    /* Brand colors - vibrant neon theme */
+    --primary: 166 100% 50%;
+    --primary-foreground: 222 25% 8%;
+
+    --secondary: 280 100% 70%;
+    --secondary-foreground: 210 100% 98%;
+
+    --muted: 222 25% 15%;
+    --muted-foreground: 215 15% 65%;
+
+    --accent: 45 100% 60%;
+    --accent-foreground: 222 25% 8%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 100% 98%;
+
+    --border: 222 25% 20%;
+    --input: 222 25% 15%;
+    --ring: 166 100% 50%;
+
+    /* Learning app specific colors */
+    --success: 166 100% 50%;
+    --warning: 45 100% 60%;
+    --info: 200 100% 60%;
+    --purple: 280 100% 70%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(166 100% 50%) 0%, hsl(200 100% 60%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(280 100% 70%) 0%, hsl(320 100% 65%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(45 100% 60%) 0%, hsl(25 100% 65%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(222 25% 12%) 0%, hsl(222 25% 15%) 100%);
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Custom gradient utilities */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  /* Neon glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-secondary {
+    box-shadow: 0 0 20px hsl(var(--secondary) / 0.3);
+  }
+
+  /* Mobile-first scrollbar styles */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
