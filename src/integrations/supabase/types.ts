@@ -142,6 +142,72 @@ export type Database = {
           },
         ]
       }
+      live_lectures: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          is_active: boolean | null
+          is_live: boolean | null
+          live_url: string
+          max_participants: number | null
+          scheduled_at: string | null
+          subject_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_live?: boolean | null
+          live_url: string
+          max_participants?: number | null
+          scheduled_at?: string | null
+          subject_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_live?: boolean | null
+          live_url?: string
+          max_participants?: number | null
+          scheduled_at?: string | null
+          subject_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_lectures_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_lectures_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
