@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipBack, SkipForward } from 'lucide-react';
 import Hls from 'hls.js';
 
 interface VideoPlayerProps {
@@ -30,7 +30,9 @@ const VideoPlayer = ({
 }: VideoPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
   // Extract video ID from YouTube URL
@@ -77,6 +79,58 @@ const VideoPlayer = ({
     videoType = 'direct';
   }
 
+  // Fullscreen functionality
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      if (containerRef.current?.requestFullscreen) {
+        await containerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else if ((containerRef.current as any)?.webkitRequestFullscreen) {
+        await (containerRef.current as any).webkitRequestFullscreen();
+        setIsFullscreen(true);
+      } else if ((containerRef.current as any)?.mozRequestFullScreen) {
+        await (containerRef.current as any).mozRequestFullScreen();
+        setIsFullscreen(true);
+      } else if ((containerRef.current as any)?.msRequestFullscreen) {
+        await (containerRef.current as any).msRequestFullscreen();
+        setIsFullscreen(true);
+      }
+    } else {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      } else if ((document as any).webkitExitFullscreen) {
+        await (document as any).webkitExitFullscreen();
+        setIsFullscreen(false);
+      } else if ((document as any).mozCancelFullScreen) {
+        await (document as any).mozCancelFullScreen();
+        setIsFullscreen(false);
+      } else if ((document as any).msExitFullscreen) {
+        await (document as any).msExitFullscreen();
+        setIsFullscreen(false);
+      }
+    }
+  };
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   // Initialize HLS player
   useEffect(() => {
     if (videoType === 'hls' && videoRef.current && videoUrl) {
@@ -120,9 +174,9 @@ const VideoPlayer = ({
   }, []);
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-4">
-      <Card>
-        <CardHeader className="pb-3">
+    <div className={`w-full max-w-4xl mx-auto space-y-4 ${isFullscreen ? 'fixed inset-0 z-50 bg-black max-w-none' : ''}`}>
+      <Card className={isFullscreen ? 'h-full' : ''}>
+        <CardHeader className={`pb-3 ${isFullscreen ? 'absolute top-0 left-0 right-0 z-10 bg-black/80 text-white' : ''}`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="text-lg sm:text-xl line-clamp-2">{title}</CardTitle>
             {isFree && <Badge variant="secondary">Free Preview</Badge>}
@@ -131,9 +185,24 @@ const VideoPlayer = ({
             <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
           )}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className={`space-y-4 ${isFullscreen ? 'h-full pt-20' : ''}`}>
           {/* Video Container */}
-          <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+          <div 
+            ref={containerRef}
+            className={`relative ${isFullscreen ? 'h-full' : 'aspect-video'} bg-black rounded-lg overflow-hidden group`}
+          >
+            {/* Fullscreen Button Overlay */}
+            <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={toggleFullscreen}
+                className="bg-black/50 hover:bg-black/70 text-white border-none"
+              >
+                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </Button>
+            </div>
+
             {videoType === 'youtube' && videoId ? (
               <iframe
                 src={embedUrl}
@@ -198,7 +267,7 @@ const VideoPlayer = ({
           </div>
 
           {/* Video Info */}
-          <div className="text-center text-sm text-muted-foreground">
+          <div className={`text-center text-sm text-muted-foreground ${isFullscreen ? 'absolute bottom-20 left-1/2 transform -translate-x-1/2 text-white' : ''}`}>
             {videoType === 'youtube' && <span>🎥 YouTube Video</span>}
             {videoType === 'vimeo' && <span>🎬 Vimeo Video</span>}
             {videoType === 'hls' && <span>📺 HLS Live Stream</span>}
@@ -207,10 +276,10 @@ const VideoPlayer = ({
           </div>
 
           {/* Video Controls */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+          <div className={`flex flex-col sm:flex-row gap-3 sm:items-center justify-between ${isFullscreen ? 'absolute bottom-4 left-4 right-4' : ''}`}>
             <div className="flex items-center gap-2">
               {duration && (
-                <span className="text-sm text-muted-foreground">
+                <span className={`text-sm ${isFullscreen ? 'text-white' : 'text-muted-foreground'}`}>
                   Duration: {Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')} min
                 </span>
               )}
@@ -222,7 +291,7 @@ const VideoPlayer = ({
                   variant="outline"
                   size="sm"
                   onClick={onPrevious}
-                  className="flex items-center gap-1"
+                  className={`flex items-center gap-1 ${isFullscreen ? 'bg-black/50 text-white border-white/20' : ''}`}
                 >
                   <SkipBack className="h-4 w-4" />
                   <span className="hidden sm:inline">Previous</span>
@@ -233,7 +302,7 @@ const VideoPlayer = ({
                 <Button
                   size="sm"
                   onClick={onNext}
-                  className="flex items-center gap-1"
+                  className={`flex items-center gap-1 ${isFullscreen ? 'bg-white/20 text-white' : ''}`}
                 >
                   <span className="hidden sm:inline">Next</span>
                   <SkipForward className="h-4 w-4" />
