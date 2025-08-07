@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import EnhancedBatchManagement from '@/components/EnhancedBatchManagement';
 import ContentManagement from '@/components/ContentManagement';
 import LiveLectureManagement from '@/components/LiveLectureManagement';
+import StorageDebugger from '@/components/StorageDebugger';
 
 interface User {
   id: string;
@@ -199,6 +200,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="content" className="space-y-4">
+            <StorageDebugger />
             <ContentManagement />
           </TabsContent>
 

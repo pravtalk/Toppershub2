@@ -64,7 +64,28 @@ const ContentManagement = () => {
 
   useEffect(() => {
     fetchData();
+    checkStorageSetup();
   }, []);
+
+  const checkStorageSetup = async () => {
+    try {
+      // Try to list files in the bucket to check if it exists
+      const { data, error } = await supabase.storage
+        .from('content-files')
+        .list('', { limit: 1 });
+
+      if (error) {
+        console.warn('Storage bucket may not be configured:', error);
+        toast({
+          title: 'Storage Warning',
+          description: 'Storage bucket may not be configured. Contact admin if uploads fail.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.warn('Storage check failed:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -119,8 +140,31 @@ const ContentManagement = () => {
     
     if (!formData.file || !formData.title || !formData.batch_id) {
       toast({
-        title: 'Error',
+        title: 'Validation Error',
         description: 'Please fill in all required fields and select a file',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file type and size
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    const allowedTypes = ['.pdf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png'];
+    const fileExt = '.' + formData.file.name.split('.').pop()?.toLowerCase();
+    
+    if (!allowedTypes.includes(fileExt)) {
+      toast({
+        title: 'File Type Error',
+        description: 'Please upload a PDF, DOC, DOCX, TXT, or image file',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (formData.file.size > maxSize) {
+      toast({
+        title: 'File Size Error',
+        description: 'File size must be less than 50MB',
         variant: 'destructive',
       });
       return;
@@ -129,44 +173,77 @@ const ContentManagement = () => {
     try {
       setUploading(true);
 
+      // Check if user is authenticated and has admin role
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('Starting file upload...', {
+        fileName: formData.file.name,
+        fileSize: formData.file.size,
+        contentType: formData.content_type
+      });
+
       // Upload file to Supabase Storage
-      const fileExt = formData.file.name.split('.').pop();
       const fileName = `${Date.now()}-${formData.file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       const filePath = `${formData.content_type}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('content-files')
-        .upload(filePath, formData.file);
+      console.log('Uploading to path:', filePath);
 
-      if (uploadError) throw uploadError;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('content-files')
+        .upload(filePath, formData.file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
+
+      console.log('File uploaded successfully:', uploadData);
 
       // Get public URL
       const { data: urlData } = supabase.storage
         .from('content-files')
         .getPublicUrl(filePath);
 
+      console.log('Public URL generated:', urlData.publicUrl);
+
       // Save file metadata to database
+      const insertData = {
+        title: formData.title,
+        description: formData.description,
+        content_type: formData.content_type,
+        file_name: formData.file.name,
+        file_url: urlData.publicUrl,
+        file_size: formData.file.size,
+        pages_count: fileExt === '.pdf' ? 1 : 1, // Default to 1, could be enhanced with PDF parser
+        batch_id: formData.batch_id,
+        subject_id: formData.subject_id || null,
+        created_by: user.id
+      };
+
+      console.log('Inserting to database:', insertData);
+
       const { error: dbError } = await supabase
         .from('content_uploads')
-        .insert([
-          {
-            title: formData.title,
-            description: formData.description,
-            content_type: formData.content_type,
-            file_name: formData.file.name,
-            file_url: urlData.publicUrl,
-            file_size: formData.file.size,
-            batch_id: formData.batch_id,
-            subject_id: formData.subject_id || null,
-            created_by: (await supabase.auth.getUser()).data.user?.id
-          }
-        ]);
+        .insert([insertData]);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database insert error:', dbError);
+        // Try to cleanup uploaded file
+        await supabase.storage.from('content-files').remove([filePath]);
+        throw new Error(`Database insert failed: ${dbError.message}`);
+      }
+
+      console.log('File metadata saved to database successfully');
 
       toast({
         title: 'Success',
-        description: 'File uploaded successfully',
+        description: `${formData.content_type === 'notes' ? 'Notes' : 'Questions'} uploaded successfully!`,
       });
 
       // Reset form and refresh data
@@ -181,11 +258,25 @@ const ContentManagement = () => {
       setIsDialogOpen(false);
       fetchData();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading file:', error);
+      
+      let errorMessage = 'Failed to upload file';
+      if (error.message) {
+        if (error.message.includes('bucket')) {
+          errorMessage = 'Storage bucket not configured. Please contact administrator.';
+        } else if (error.message.includes('permission') || error.message.includes('policy')) {
+          errorMessage = 'You do not have permission to upload files.';
+        } else if (error.message.includes('authenticated')) {
+          errorMessage = 'Please log in to upload files.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
-        title: 'Error',
-        description: 'Failed to upload file',
+        title: 'Upload Error',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
