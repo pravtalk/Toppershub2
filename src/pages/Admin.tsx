@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Users, Settings, GraduationCap } from 'lucide-react';
+import { Users, Settings, GraduationCap, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EnhancedBatchManagement from '@/components/EnhancedBatchManagement';
+import ContentManagement from '@/components/ContentManagement';
 
 interface User {
   id: string;
@@ -140,6 +141,12 @@ const Admin = () => {
       icon: GraduationCap,
       description: 'Active batches',
     },
+    {
+      title: 'Content Files',
+      value: 0, // This will be updated when content uploads are fetched
+      icon: FileText,
+      description: 'Notes & Questions',
+    },
   ];
 
   return (
@@ -155,7 +162,7 @@ const Admin = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-8">
           {statsCards.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -179,13 +186,18 @@ const Admin = () => {
 
         {/* Admin Tabs */}
         <Tabs defaultValue="batches" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="batches" className="text-xs sm:text-sm">Batches</TabsTrigger>
+            <TabsTrigger value="content" className="text-xs sm:text-sm">Content</TabsTrigger>
             <TabsTrigger value="users" className="text-xs sm:text-sm">Users</TabsTrigger>
           </TabsList>
 
           <TabsContent value="batches" className="space-y-4">
             <EnhancedBatchManagement />
+          </TabsContent>
+
+          <TabsContent value="content" className="space-y-4">
+            <ContentManagement />
           </TabsContent>
 
           <TabsContent value="users" className="space-y-4">
