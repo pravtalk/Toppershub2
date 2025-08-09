@@ -53,6 +53,7 @@ const Lectures = () => {
   };
 
   const playLecture = (lecture: Lecture) => {
+    console.log("🎬 Playing lecture:", lecture.title);
     setSelectedLecture(lecture);
     toast({
       title: "Playing Lecture",
@@ -63,6 +64,11 @@ const Lectures = () => {
   const closeLecturePlayer = () => {
     setSelectedLecture(null);
   };
+
+  // Debug effect to track state changes
+  useEffect(() => {
+    console.log("📺 selectedLecture state changed to:", selectedLecture?.title || null);
+  }, [selectedLecture]);
 
   const lectures = [
     {
@@ -170,6 +176,7 @@ const Lectures = () => {
 
   // If a lecture is selected, show the video player
   if (selectedLecture) {
+    console.log("🎯 Rendering video player for:", selectedLecture.title);
     return (
       <div className="min-h-screen bg-background pb-20">
         <div className="container mx-auto px-4 py-6">
@@ -184,14 +191,30 @@ const Lectures = () => {
             </Button>
           </div>
           
-          <VideoPlayer 
-            videoUrl={selectedLecture.video_url}
-            title={selectedLecture.title}
-            description={`${selectedLecture.subject} - ${selectedLecture.difficulty} Level`}
-            initialQuality={videoQuality}
-            onQualityChange={handleQualityChange}
-            showQualitySelector={true}
-          />
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold mb-4">Now Playing: {selectedLecture.title}</h2>
+            <p className="text-lg mb-4">{selectedLecture.subject} - {selectedLecture.difficulty} Level</p>
+            <p className="text-sm text-muted-foreground mb-4">Video URL: {selectedLecture.video_url}</p>
+            <p className="text-xs text-green-600">Video Player Component Should Render Below:</p>
+          </div>
+          
+          <div className="border-2 border-dashed border-blue-300 p-4 rounded-lg">
+            <div className="text-center p-4 bg-yellow-100 rounded mb-4">
+              <p>Debug Info:</p>
+              <p>Video URL: {selectedLecture.video_url}</p>
+              <p>Title: {selectedLecture.title}</p>
+              <p>Quality: {videoQuality}</p>
+            </div>
+            
+            <VideoPlayer 
+              videoUrl={selectedLecture.video_url}
+              title={selectedLecture.title}
+              description={`${selectedLecture.subject} - ${selectedLecture.difficulty} Level`}
+              initialQuality={videoQuality}
+              onQualityChange={handleQualityChange}
+              showQualitySelector={true}
+            />
+          </div>
         </div>
         <Navigation />
       </div>
@@ -206,6 +229,10 @@ const Lectures = () => {
           <h1 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent">
             PraveshCoderZ
           </h1>
+          {/* Debug info */}
+          <div className="text-xs text-muted-foreground mt-2">
+            Debug: Selected lecture = {selectedLecture ? selectedLecture.title : "null"}
+          </div>
         </div>
       </div>
 
@@ -286,7 +313,10 @@ const Lectures = () => {
                           variant="study" 
                           size="default" 
                           className="flex-1 sm:flex-none"
-                          onClick={() => playLecture(lecture)}
+                          onClick={() => {
+                            console.log("Button clicked for lecture:", lecture.title);
+                            playLecture(lecture);
+                          }}
                         >
                           <Play className="w-4 h-4 mr-2" />
                           Play Lecture

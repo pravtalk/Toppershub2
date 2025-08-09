@@ -103,16 +103,10 @@ const VideoPlayer = ({
   const isHLS = isHLSVideo(videoUrl);
   
   // Determine video type
-  let videoType = 'custom';
-  if (videoId) {
-    videoType = 'youtube';
-  } else if (vimeoId) {
-    videoType = 'vimeo';
-  } else if (isHLS) {
-    videoType = 'hls';
-  } else if (isDirect) {
-    videoType = 'direct';
-  }
+  const videoType = videoId ? 'youtube' : 
+                    vimeoId ? 'vimeo' : 
+                    isHLS ? 'hls' : 
+                    isDirect ? 'direct' : 'custom';
 
   // Generate embed URL based on type and quality
   const [embedUrl, setEmbedUrl] = useState(videoUrl);
