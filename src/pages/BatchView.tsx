@@ -51,6 +51,15 @@ const BatchView = () => {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
+  const [videoQuality, setVideoQuality] = useState<string>("720p");
+
+  const handleQualityChange = (quality: string) => {
+    setVideoQuality(quality);
+    toast({
+      title: "Video Quality Updated",
+      description: `Quality set to ${quality === "auto" ? "Auto (adaptive)" : quality}`,
+    });
+  };
 
   // Redirect to auth if user is not logged in
   useEffect(() => {
@@ -246,6 +255,9 @@ const BatchView = () => {
               videoUrl={selectedLecture.video_url}
               title={selectedLecture.title}
               description={selectedLecture.description}
+              initialQuality={videoQuality}
+              onQualityChange={handleQualityChange}
+              showQualitySelector={true}
             />
           </div>
         ) : selectedSubject ? (
