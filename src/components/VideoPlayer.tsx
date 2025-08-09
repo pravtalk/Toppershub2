@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipBack, SkipForward } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipBack, SkipForward, Settings } from 'lucide-react';
 import Hls from 'hls.js';
 
 interface VideoPlayerProps {
@@ -15,6 +16,9 @@ interface VideoPlayerProps {
   onPrevious?: () => void;
   hasNext?: boolean;
   hasPrevious?: boolean;
+  initialQuality?: string;
+  onQualityChange?: (quality: string) => void;
+  showQualitySelector?: boolean;
 }
 
 const VideoPlayer = ({ 
@@ -26,11 +30,16 @@ const VideoPlayer = ({
   onNext,
   onPrevious,
   hasNext = false,
-  hasPrevious = false
+  hasPrevious = false,
+  initialQuality = "720p",
+  onQualityChange,
+  showQualitySelector = true
 }: VideoPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState(initialQuality);
+  const [availableQualities, setAvailableQualities] = useState<string[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -59,25 +68,73 @@ const VideoPlayer = ({
     return /\.m3u8(\?.*)?$/i.test(url);
   };
 
+  // Quality handling function
+  const handleQualityChange = (quality: string) => {
+    setSelectedQuality(quality);
+    onQualityChange?.(quality);
+    
+    // For HLS streams, switch quality level
+    if (hlsRef.current && videoType === 'hls') {
+      const levels = hlsRef.current.levels;
+      if (quality === 'auto') {
+        hlsRef.current.currentLevel = -1; // Auto quality
+      } else {
+        const qualityLevel = parseInt(quality.replace('p', ''));
+        const targetLevel = levels.findIndex(level => level.height === qualityLevel);
+        if (targetLevel !== -1) {
+          hlsRef.current.currentLevel = targetLevel;
+        }
+      }
+    }
+  };
+
+  // Update video source when quality changes for non-HLS videos
+  useEffect(() => {
+    if (videoType !== 'hls' && videoRef.current && videoType === 'direct') {
+      // For direct videos, we can't change quality dynamically
+      // but we ensure the video is loaded properly
+      videoRef.current.load();
+    }
+  }, [selectedQuality, videoType]);
+
   const videoId = getYouTubeVideoId(videoUrl);
   const vimeoId = getVimeoVideoId(videoUrl);
   const isDirect = isDirectVideo(videoUrl);
   const isHLS = isHLSVideo(videoUrl);
   
-  let embedUrl = videoUrl;
+  // Determine video type
   let videoType = 'custom';
-  
   if (videoId) {
-    embedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`;
     videoType = 'youtube';
   } else if (vimeoId) {
-    embedUrl = `https://player.vimeo.com/video/${vimeoId}`;
     videoType = 'vimeo';
   } else if (isHLS) {
     videoType = 'hls';
   } else if (isDirect) {
     videoType = 'direct';
   }
+
+  // Generate embed URL based on type and quality
+  const [embedUrl, setEmbedUrl] = useState(videoUrl);
+  
+  useEffect(() => {
+    let newEmbedUrl = videoUrl;
+    
+    if (videoId) {
+      // Add quality parameter for YouTube videos
+      const qualityParam = selectedQuality === 'auto' ? 'hd1080' : 
+                          selectedQuality === '1080p' ? 'hd1080' :
+                          selectedQuality === '720p' ? 'hd720' :
+                          selectedQuality === '480p' ? 'large' : 'medium';
+      newEmbedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}&vq=${qualityParam}&hd=1`;
+    } else if (vimeoId) {
+      // Add quality parameter for Vimeo videos  
+      const qualityParam = selectedQuality === 'auto' ? '' : `&quality=${selectedQuality}`;
+      newEmbedUrl = `https://player.vimeo.com/video/${vimeoId}?responsive=1${qualityParam}`;
+    }
+    
+    setEmbedUrl(newEmbedUrl);
+  }, [videoUrl, videoId, vimeoId, selectedQuality]);
 
   // Fullscreen functionality
   const toggleFullscreen = async () => {
@@ -138,7 +195,9 @@ const VideoPlayer = ({
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          backBufferLength: 90
+          backBufferLength: 90,
+          startLevel: -1, // Start with auto quality
+          capLevelToPlayerSize: true // Optimize for player size
         });
         
         hls.loadSource(videoUrl);
@@ -146,6 +205,18 @@ const VideoPlayer = ({
         
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           console.log('HLS manifest loaded');
+          // Extract available qualities from levels
+          const qualities = hls.levels.map(level => `${level.height}p`);
+          setAvailableQualities(['auto', ...qualities.sort((a, b) => parseInt(b) - parseInt(a))]);
+          
+          // Set default quality to high quality (720p or 1080p)
+          const highQualityLevel = hls.levels.find(level => level.height >= 720);
+          if (highQualityLevel && selectedQuality !== 'auto') {
+            const targetLevel = hls.levels.findIndex(level => level.height === parseInt(selectedQuality.replace('p', '')));
+            if (targetLevel !== -1) {
+              hls.currentLevel = targetLevel;
+            }
+          }
         });
         
         hls.on(Hls.Events.ERROR, (event, data) => {
@@ -160,9 +231,13 @@ const VideoPlayer = ({
       } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
         // Safari native HLS support
         videoRef.current.src = videoUrl;
+        setAvailableQualities(['auto', '1080p', '720p', '480p', '360p']);
       }
+    } else {
+      // For non-HLS videos, set standard quality options
+      setAvailableQualities(['auto', '1080p', '720p', '480p', '360p']);
     }
-  }, [videoUrl, videoType]);
+  }, [videoUrl, videoType, selectedQuality]);
 
   // Cleanup HLS on unmount
   useEffect(() => {
@@ -191,8 +266,25 @@ const VideoPlayer = ({
             ref={containerRef}
             className={`relative ${isFullscreen ? 'h-full' : 'aspect-video'} bg-black rounded-lg overflow-hidden group`}
           >
-            {/* Fullscreen Button Overlay */}
-            <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Controls Overlay */}
+            <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+              {/* Quality Selector */}
+              {showQualitySelector && availableQualities.length > 1 && (
+                <Select value={selectedQuality} onValueChange={handleQualityChange}>
+                  <SelectTrigger className="w-20 h-8 bg-black/50 text-white border-white/20 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableQualities.map((quality) => (
+                      <SelectItem key={quality} value={quality}>
+                        {quality === 'auto' ? 'Auto' : quality}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              {/* Fullscreen Button */}
               <Button
                 variant="secondary"
                 size="sm"
@@ -268,11 +360,20 @@ const VideoPlayer = ({
 
           {/* Video Info */}
           <div className={`text-center text-sm text-muted-foreground ${isFullscreen ? 'absolute bottom-20 left-1/2 transform -translate-x-1/2 text-white' : ''}`}>
-            {videoType === 'youtube' && <span>🎥 YouTube Video</span>}
-            {videoType === 'vimeo' && <span>🎬 Vimeo Video</span>}
-            {videoType === 'hls' && <span>📺 HLS Live Stream</span>}
-            {videoType === 'direct' && <span>📹 Direct Video</span>}
-            {videoType === 'custom' && videoUrl && <span>🔗 External Video Link</span>}
+            <div className="flex items-center justify-center gap-4">
+              <span>
+                {videoType === 'youtube' && '🎥 YouTube Video'}
+                {videoType === 'vimeo' && '🎬 Vimeo Video'}
+                {videoType === 'hls' && '📺 HLS Stream'}
+                {videoType === 'direct' && '📹 Direct Video'}
+                {videoType === 'custom' && videoUrl && '🔗 External Video'}
+              </span>
+              {showQualitySelector && (
+                <span className="text-xs px-2 py-1 bg-primary/10 rounded">
+                  Quality: {selectedQuality === 'auto' ? 'Auto' : selectedQuality}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Video Controls */}

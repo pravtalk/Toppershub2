@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Play, FileText, Search, Download, Eye, HelpCircle, Settings } from "lucide-react";
+import { Play, FileText, Search, Download, Eye, HelpCircle, Settings, ArrowLeft } from "lucide-react";
 import Navigation from "@/components/Navigation";
+import VideoPlayer from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,11 +25,23 @@ interface ContentUpload {
   batches?: { name: string };
 }
 
+interface Lecture {
+  id: number;
+  title: string;
+  subject: string;
+  thumbnail: string;
+  duration: string;
+  views: string;
+  difficulty: string;
+  video_url: string;
+}
+
 const Lectures = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [contentUploads, setContentUploads] = useState<ContentUpload[]>([]);
   const [loading, setLoading] = useState(true);
   const [videoQuality, setVideoQuality] = useState<string>("720p");
+  const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
   const { toast } = useToast();
 
   const handleQualityChange = (quality: string) => {
@@ -39,6 +52,18 @@ const Lectures = () => {
     });
   };
 
+  const playLecture = (lecture: Lecture) => {
+    setSelectedLecture(lecture);
+    toast({
+      title: "Playing Lecture",
+      description: `Now playing: ${lecture.title}`,
+    });
+  };
+
+  const closeLecturePlayer = () => {
+    setSelectedLecture(null);
+  };
+
   const lectures = [
     {
       id: 1,
@@ -47,7 +72,8 @@ const Lectures = () => {
       thumbnail: "/placeholder.svg",
       duration: "45 min",
       views: "2.3k",
-      difficulty: "Beginner"
+      difficulty: "Beginner",
+      video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     },
     {
       id: 2,
@@ -56,7 +82,8 @@ const Lectures = () => {
       thumbnail: "/placeholder.svg",
       duration: "50 min",
       views: "1.8k",
-      difficulty: "Intermediate"
+      difficulty: "Intermediate",
+      video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     },
     {
       id: 3,
@@ -65,7 +92,8 @@ const Lectures = () => {
       thumbnail: "/placeholder.svg", 
       duration: "55 min",
       views: "1.5k",
-      difficulty: "Advanced"
+      difficulty: "Advanced",
+      video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     }
   ];
 
@@ -139,6 +167,36 @@ const Lectures = () => {
      upload.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
      (upload.subjects as any)?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // If a lecture is selected, show the video player
+  if (selectedLecture) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <div className="container mx-auto px-4 py-6">
+          <div className="mb-6">
+            <Button
+              variant="outline"
+              onClick={closeLecturePlayer}
+              className="mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Lectures
+            </Button>
+          </div>
+          
+          <VideoPlayer 
+            videoUrl={selectedLecture.video_url}
+            title={selectedLecture.title}
+            description={`${selectedLecture.subject} - ${selectedLecture.difficulty} Level`}
+            initialQuality={videoQuality}
+            onQualityChange={handleQualityChange}
+            showQualitySelector={true}
+          />
+        </div>
+        <Navigation />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -224,7 +282,12 @@ const Lectures = () => {
                       </Badge>
 
                       <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                        <Button variant="study" size="default" className="flex-1 sm:flex-none">
+                        <Button 
+                          variant="study" 
+                          size="default" 
+                          className="flex-1 sm:flex-none"
+                          onClick={() => playLecture(lecture)}
+                        >
                           <Play className="w-4 h-4 mr-2" />
                           Play Lecture
                         </Button>
