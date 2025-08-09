@@ -1,9 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { BookOpen, Calculator, FlaskConical, Globe, PenTool, Microscope } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 
 const Subjects = () => {
+  const navigate = useNavigate();
+  
   const subjects = [
     {
       id: 1,
@@ -103,7 +106,12 @@ const Subjects = () => {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button variant="study" size="sm" className="flex-1">
+                      <Button 
+                        variant="study" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => navigate(`/lectures/${subject.title.toLowerCase().replace(' ', '-')}`)}
+                      >
                         View Lectures
                       </Button>
                       <Button variant="outline" size="sm">
