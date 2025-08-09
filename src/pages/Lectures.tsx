@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,6 +38,7 @@ interface Lecture {
 }
 
 const Lectures = () => {
+  const { subject } = useParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [contentUploads, setContentUploads] = useState<ContentUpload[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,9 +155,10 @@ const Lectures = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Filter content by search query and type
+  // Filter content by search query, type, and subject
   const filteredNotes = contentUploads.filter(upload => 
     upload.content_type === 'notes' &&
+    (!subject || (upload.subjects as any)?.name?.toLowerCase().replace(' ', '-') === subject) &&
     (upload.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
      upload.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
      (upload.subjects as any)?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -163,6 +166,7 @@ const Lectures = () => {
 
   const filteredQuestions = contentUploads.filter(upload => 
     upload.content_type === 'questions' &&
+    (!subject || (upload.subjects as any)?.name?.toLowerCase().replace(' ', '-') === subject) &&
     (upload.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
      upload.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
      (upload.subjects as any)?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -206,6 +210,11 @@ const Lectures = () => {
           <h1 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent">
             PraveshCoderZ
           </h1>
+          {subject && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Lectures for {subject.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </p>
+          )}
         </div>
       </div>
 
@@ -242,7 +251,9 @@ const Lectures = () => {
 
           <TabsContent value="videos">
             <div className="space-y-4">
-              {lectures.map((lecture) => (
+              {lectures
+                .filter(lecture => !subject || lecture.subject.toLowerCase().replace(' ', '-') === subject)
+                .map((lecture) => (
                 <div
                   key={lecture.id}
                   className="gradient-card rounded-xl p-6 border border-border hover:border-primary/50 transition-all duration-300"
